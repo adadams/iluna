@@ -11,9 +11,14 @@ PositiveValue: TypeAlias = Annotated[float, msgspec.Meta(gt=0)]
 NonnegativeValue: TypeAlias = Annotated[float, msgspec.Meta(ge=0)]
 NonpositiveValue: TypeAlias = Annotated[float, msgspec.Meta(le=0)]
 
+AngleValue: TypeAlias = Annotated[float, msgspec.Meta(ge=0, le=2 * np.pi)]
 AltitudeValue: TypeAlias = NonnegativeValue
+DurationValue: TypeAlias = NonnegativeValue
+FluxValue: TypeAlias = NonnegativeValue
+MassValue: TypeAlias = PositiveValue
 TemperatureValue: TypeAlias = PositiveValue
 PressureValue: TypeAlias = NonnegativeValue
+RadiusValue: TypeAlias = PositiveValue
 LogPressureValue: TypeAlias = float
 MixingRatioValue: TypeAlias = NormalizedValue
 LogMixingRatioValue: TypeAlias = NonpositiveValue

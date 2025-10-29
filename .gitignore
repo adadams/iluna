@@ -1,0 +1,12 @@
+jaxoplanet_source_mods/
+starry_routines_not_in_jaxoplanet_yet/
+original_eigenmode_fitting/
+.vscode/
+
+datasets/*
+fit_outputs/*
+
+scripts/fit_transit_with_jaxoplanet.py
+scripts/plot_transit_fit.py
+
+*.pyc
