@@ -19,11 +19,10 @@ from iluna.basic_types import (
     DurationValue,
     FluxValue,
     MassValue,
-    NonnegativeValue,
     NormalizedValue,
     RadiusValue,
 )
-from iluna.structures import NonEclipseFitParameters, TransitFitParameters
+from iluna.structures import TransitFitParameters
 from jaxoplanet_source_mods.light_curves.emission import light_curve
 from scripts.prepare_data import prepare_white_light_in_transit_data
 

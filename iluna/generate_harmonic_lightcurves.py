@@ -4,7 +4,6 @@ from pathlib import Path
 import jax
 import numpy as np
 import xarray as xr
-from cf_xarray import encode_multi_index_as_compress
 from jaxoplanet.orbits.keplerian import Body, Central
 from jaxoplanet.starry import Surface, Ylm
 from jaxoplanet.starry.light_curves import light_curve
@@ -13,9 +12,8 @@ from pandas import MultiIndex
 
 sys.path.append(str(Path(__file__).parent.parent))
 from iluna.basic_types import FluxValue, MassValue, NormalizedValue, RadiusValue
+from iluna.helper_functions import save_xarray_data_to_file
 from iluna.structures import TransitFitParameters
-
-# from jaxoplanet_source_mods.light_curves.emission import light_curve
 from scripts.prepare_data import FullPhaseData, prepare_white_light_full_data
 
 jax.config.update("jax_enable_x64", True)
@@ -25,12 +23,11 @@ project_directory: Path = current_directory.parent
 dataset_directory: Path = project_directory / "datasets"
 
 
-def construct_system_lightcurves(
+def construct_surface_system(
     parameters: dict,
-    lightcurve_time: xr.DataArray,
     central_map_parameters: dict = {(0, 0): 1},
     companion_map_parameters: dict = {(0, 0): 1},
-) -> xr.Dataset:
+) -> SurfaceSystem:
     sqrt_q0: NormalizedValue = np.sqrt(parameters["q0"])
     q1: NormalizedValue = parameters["q1"]
     u0: float = sqrt_q0 * 2 * q1
@@ -38,8 +35,6 @@ def construct_system_lightcurves(
 
     RWD: RadiusValue = parameters["RWD"]
     MWD: MassValue = parameters["MWD"]
-
-    RBD: RadiusValue = parameters["RBD"]
 
     baseline_WD_brightness: FluxValue = parameters["baseline_WD_brightness"]
     baseline_BD_nightside_brightness: FluxValue = parameters[
@@ -62,16 +57,9 @@ def construct_system_lightcurves(
     )
 
     phase_adjustment: float = (
-        np.pi
-        * (
-            1
-            - 2
-            * (
-                MLE_transit_fit_parameters["time_transit"]
-                / MLE_transit_fit_parameters["period"]
-            )
-        )
+        np.pi * (1 - 2 * (parameters["time_transit"] / parameters["period"]))
     ) % (2 * np.pi)  # sets nightside view (phase = pi) at time of mid-transit
+    # print(f"phase adjustment: {phase_adjustment:.3f} radians")
 
     surface_planet: Surface = Surface(
         y=Ylm(companion_map_parameters),
@@ -86,6 +74,22 @@ def construct_system_lightcurves(
         central=body_central,
         central_surface=surface_central,
         bodies=((body_planet, surface_planet),),
+    )
+
+    return system
+
+
+def construct_system_lightcurves(
+    parameters: dict,
+    lightcurve_time: xr.DataArray,
+    central_map_parameters: dict = {(0, 0): 1},
+    companion_map_parameters: dict = {(0, 0): 1},
+) -> xr.Dataset:
+    RWD: RadiusValue = parameters["RWD"]
+    RBD: RadiusValue = parameters["RBD"]
+
+    system: SurfaceSystem = construct_surface_system(
+        parameters, central_map_parameters, companion_map_parameters
     )
 
     WD_model_lightcurve, BD_model_lightcurve = light_curve(system, order=25)(
@@ -264,7 +268,7 @@ if __name__ == "__main__":
         MLE_transit_fit_parameters, model_transit_time_as_coordinate
     )
 
-    maximum_harmonic_degree: int = 20
+    maximum_harmonic_degree: int = 3
 
     pure_harmonic_lightcurves: xr.Dataset = construct_pure_harmonic_lightcurves(
         MLE_transit_fit_parameters,
@@ -272,10 +276,9 @@ if __name__ == "__main__":
         maximum_harmonic_degree,
     )
 
-    test_lightcurve_deviations_serializable: xr.Dataset = (
-        encode_multi_index_as_compress(pure_harmonic_lightcurves, "harmonic_index")
-    )
-    test_lightcurve_deviations_serializable.to_netcdf(
-        dataset_directory
-        / f"pure_harmonic_lightcurves_maximum_degree_{maximum_harmonic_degree}.nc"
+    pure_harmonic_lightcurves_encoded_for_saving: xr.Dataset = save_xarray_data_to_file(
+        pure_harmonic_lightcurves,
+        filename=dataset_directory
+        / f"pure_harmonic_lightcurves_maximum_degree_{maximum_harmonic_degree}.nc",
+        multi_index_dims="harmonic_index",
     )

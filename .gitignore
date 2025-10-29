@@ -11,3 +11,4 @@ scripts/fit_transit_with_jaxoplanet.py
 scripts/plot_transit_fit.py
 
 *.pyc
+scripts/fit_light_curve.py

@@ -19,7 +19,7 @@ BDWD_data: xr.DataArray = BDWD_dataset.flux_white
 BDWD_data_errors: xr.DataArray = BDWD_dataset.err_white
 
 harmonic_lightcurve_dataset_filepath: Path = (
-    dataset_directory / "pure_harmonic_lightcurves_phase_adjusted.nc"
+    dataset_directory / "pure_harmonic_lightcurves_maximum_degree_20.nc"
 )
 
 harmonic_lightcurve_dataset: xr.Dataset = xr.open_dataset(
@@ -38,7 +38,7 @@ axis.plot(BDWD_time, BDWD_data, color="black")
 
 axis.plot(harmonic_lightcurve_time, constant_lightcurve_data, color="C0", alpha=1)
 
-for i in range(1, 10):
+for i in range(1, 8):
     axis.plot(
         harmonic_lightcurve_time,
         (
