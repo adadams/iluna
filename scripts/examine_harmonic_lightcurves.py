@@ -27,9 +27,10 @@ harmonic_lightcurve_dataset: xr.Dataset = xr.open_dataset(
 )
 
 harmonic_lightcurve_time: xr.DataArray = harmonic_lightcurve_dataset.time
-harmonic_lightcurve_data: xr.DataArray = (
-    harmonic_lightcurve_dataset.system_model_lightcurve
+baseline_WD_lightcurve_data: xr.DataArray = (
+    harmonic_lightcurve_dataset.WD_model_lightcurve[0, :]
 )
+harmonic_lightcurve_data: xr.DataArray = harmonic_lightcurve_dataset.BD_model_lightcurve
 constant_lightcurve_data: xr.DataArray = harmonic_lightcurve_data[0, :]
 
 
@@ -38,16 +39,16 @@ axis.plot(BDWD_time, BDWD_data, color="black")
 
 axis.plot(harmonic_lightcurve_time, constant_lightcurve_data, color="C0", alpha=1)
 
+arbitrary_harmonic_scale: float = 1.0e3
+
 for i in range(1, 8):
     axis.plot(
         harmonic_lightcurve_time,
-        (
-            harmonic_lightcurve_data[i, :]
-            - constant_lightcurve_data
-            + constant_lightcurve_data.min()
-        )
-        * 10
-        + constant_lightcurve_data.median(),
+        harmonic_lightcurve_data[i, :]
+        / harmonic_lightcurve_dataset.attrs["baseline_BD_nightside_brightness"].item()
+        * arbitrary_harmonic_scale
+        + baseline_WD_lightcurve_data
+        + harmonic_lightcurve_dataset.attrs["baseline_BD_nightside_brightness"].item(),
         color="C" + str(i),
         alpha=0.66,
     )

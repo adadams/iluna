@@ -40,11 +40,15 @@ if __name__ == "__main__":
         harmonic_lightcurve_dataset.system_model_lightcurve.isel(harmonic_index=0)
     )
 
+    baseline_BD_nightside_brightness: xr.DataArray = harmonic_lightcurve_dataset.attrs[
+        "baseline_BD_nightside_brightness"
+    ].item()
+
     harmonic_lightcurves_minus_constant_lightcurve: xr.DataArray = (
-        ((harmonic_lightcurve_dataset.system_model_lightcurve) - constant_lightcurve)
-        .isel(harmonic_index=slice(1, None))
-        .transpose("time", "harmonic_index")
-    )
+        harmonic_lightcurve_dataset.BD_model_lightcurve.isel(
+            harmonic_index=slice(1, None)
+        ).transpose("time", "harmonic_index")
+    ) / baseline_BD_nightside_brightness
 
     WD_in_front_of_BD: xr.DataArray = (
         harmonic_lightcurve_dataset.WD_in_front_of_BD.isel(harmonic_index=0, drop=True)
@@ -64,7 +68,7 @@ if __name__ == "__main__":
         "at_all_phases"
     )  # placeholder for doing no cuts
 
-    fit_condition: xr.DataArray = out_of_occultation
+    fit_condition: xr.DataArray = at_all_phases
 
     nonconstant_harmonics: xr.DataArray = (
         harmonic_lightcurves_minus_constant_lightcurve.where(fit_condition)
