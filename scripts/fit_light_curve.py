@@ -50,7 +50,7 @@ def calculate_BIC(
     log_likelihood: float = calculate_log_likelihood(
         best_fit_light_curve, white_light_data, white_light_data_errors
     ).item()
-    print(f"log likelihood: {log_likelihood}")
+
     number_of_data_points: int = len(white_light_data)
     number_of_parameters: int = number_of_eigenmodes
 
@@ -65,6 +65,7 @@ BIC_value: float = 0
 
 
 def fit_to_eigencurves(
+    eigenmode_harmonic_coefficients: xr.DataArray,
     model_light_curves: xr.DataArray,
     white_light_data: xr.DataArray,
     white_light_data_errors: xr.DataArray,
@@ -87,6 +88,10 @@ def fit_to_eigencurves(
 
     best_fit_light_curve: xr.DataArray = xr.dot(fit_coefficients, model_light_curves)
 
+    best_fit_harmonic_components: xr.DataArray = xr.dot(
+        fit_coefficients, eigenmode_harmonic_coefficients
+    )
+
     BIC_value = calculate_BIC(
         best_fit_light_curve,
         white_light_data,
@@ -98,9 +103,8 @@ def fit_to_eigencurves(
         {
             "fit_coefficients": fit_coefficients,
             "model_light_curves": model_light_curves,
-            # "model_maps": model_maps,
+            "best_fit_harmonic_components": best_fit_harmonic_components,
             "best_fit_light_curve": best_fit_light_curve,
-            # "best_fit_map": best_fit_map,
             "white_light_data": white_light_data,
             "white_light_data_errors": white_light_data_errors,
         },
@@ -173,10 +177,14 @@ if __name__ == "__main__":
         coords={"time": data_dataset.time},
     )
 
-    model_light_curves_for_fitting: xr.DataArray = xr.concat(
-        [constant_BD_lightcurve_binned_to_data, model_light_curves_binned_to_data],
-        dim="eigenmode",
-    ).fillna(0.0)
+    model_light_curves_for_fitting: xr.DataArray = (
+        xr.concat(
+            [constant_BD_lightcurve_binned_to_data, model_light_curves_binned_to_data],
+            dim="eigenmode",
+        )
+        .fillna(0.0)
+        .rename("model_light_curves_for_fitting")
+    )
     model_light_curves_for_fitting.to_netcdf(
         dataset_directory / "model_light_curves_for_fitting.nc"
     )
@@ -192,10 +200,34 @@ if __name__ == "__main__":
         fit_condition, drop=True
     )
 
-    maximum_fit_eigenmode: int = 25
+    constant_harmonic_components: np.ndarray = np.r_[
+        1.0, np.zeros_like(eigenmode_fit_dataset.eigenmode)
+    ]
+    harmonic_components_with_constant_index: np.ndarray = np.r_[
+        np.zeros_like(eigenmode_fit_dataset.harmonic_index)[np.newaxis, :],
+        eigenmode_fit_dataset.harmonic_components.values,
+    ]
+
+    eigenmode_harmonic_components: xr.DataArray = xr.DataArray(
+        data=np.c_[
+            constant_harmonic_components,
+            harmonic_components_with_constant_index,
+        ],
+        dims=("eigenmode", "harmonic_index"),
+        coords={
+            "eigenmode": np.r_[0, eigenmode_fit_dataset.eigenmode.values],
+            "harmonic_index": harmonic_lightcurve_dataset.harmonic_index,
+        },
+        name="eigenmode_harmonic_component",
+    )
+
+    maximum_fit_eigenmode: int = 26
 
     fit_datasets: list[xr.Dataset] = [
         fit_to_eigencurves(
+            eigenmode_harmonic_components.isel(
+                eigenmode=slice(None, fit_eigenmode + 1)
+            ),
             model_light_curves_for_fitting.transpose("time", "eigenmode")
             .where(is_valid_data, drop=True)
             .isel(eigenmode=slice(None, fit_eigenmode + 1)),
@@ -207,9 +239,11 @@ if __name__ == "__main__":
     ]
 
     fit_iteration_dataset: xr.Dataset = xr.concat(fit_datasets, dim="maximum_eigenmode")
+
     save_xarray_data_to_file(
         fit_iteration_dataset,
-        dataset_directory / "fit_iterations.nc",
+        filename=dataset_directory / "fit_iterations.nc",
+        multi_index_dims="harmonic_index",
     )
 
     BIC_values: np.ndarray[np.float64] = np.array(

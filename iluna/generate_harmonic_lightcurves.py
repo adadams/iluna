@@ -63,7 +63,7 @@ def construct_surface_system(
 
     surface_planet: Surface = Surface(
         y=Ylm(companion_map_parameters),
-        amplitude=baseline_BD_nightside_brightness,
+        # amplitude=baseline_BD_nightside_brightness,
         period=parameters["period"],  # i.e. tidal locking
         phase=phase_adjustment,
         normalize=False,
